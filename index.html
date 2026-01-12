@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KNITTO – Premium 3D Store</title>
+
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@1,600&family=Plus+Jakarta+Sans:wght@300;500;800&display=swap" rel="stylesheet">
+    <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
+
+    <style>
+        :root {
+            --accent: #c7a7c6; 
+            --bg: #050505;
+            --glass: rgba(255, 255, 255, 0.08);
+            --border: rgba(255, 255, 255, 0.15);
+        }
+
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: var(--bg);
+            color: #fff;
+            overflow-x: hidden;
+        }
+
+        .live-bg {
+            position: fixed; top:0; left:0; width:100%; height:100%; z-index: -3;
+            background: linear-gradient(125deg, #175264, #358b98, #050505, #4a2a47);
+            background-size: 400% 400%; animation: liquidFlow 15s ease infinite;
+        }
+        @keyframes liquidFlow { 0% { background-position:0% 50%; } 50% { background-position:100% 50%; } 100% { background-position:0% 50%; } }
+
+        /* --- CAPSULE NAVIGATION --- */
+        nav { display:flex; justify-content:space-between; align-items:center; padding:30px 8%; position:fixed; top:0; width:100%; z-index:1000; }
+        nav h1 { font-size: 1.6rem; letter-spacing: 8px; font-weight: 800; cursor: pointer; text-shadow: 0 4px 10px rgba(0,0,0,0.3); }
+        
+        .nav-capsule {
+            display: flex; align-items: center; background: var(--glass);
+            backdrop-filter: blur(15px); border: 1px solid var(--border);
+            padding: 6px 25px; border-radius: 50px; transition: 0.4s ease;
+        }
+        .nav-capsule:hover { border-color: rgba(255,255,255,0.4); box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
+
+        .nav-link {
+            color: #fff; font-size: 0.75rem; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 1px; cursor: pointer; padding: 10px 15px; transition: 0.3s;
+        }
+        .nav-link:hover { opacity: 0.7; }
+        
+        .divider { width: 1px; height: 18px; background: rgba(255,255,255,0.2); margin: 0 5px; }
+
+        #cart-count {
+            background: var(--accent); color: #fff; font-size: 0.65rem; font-weight: 800;
+            padding: 2px 7px; border-radius: 20px; margin-left: 5px;
+        }
+
+        /* --- SHOP SECTION --- */
+        #shop { display:none; background: #f4f7f8; color:#111; padding:120px 8% 80px; border-radius:60px 60px 0 0; min-height: 100vh; position: relative; z-index: 10; }
+        .product-grid { display: grid; gap: 30px; margin-top: 50px; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
+        .item-card { background:#fff; padding:20px; border-radius:35px; border: 1px solid #e0e6e8; text-align:center; transition: 0.4s; cursor: pointer; }
+        .item-card:hover { transform: translateY(-10px); box-shadow: 0 20px 40px rgba(0,0,0,0.05); }
+        .item-card img { width:100%; border-radius:25px; margin-bottom:15px; }
+
+        .modal-overlay {
+            position: fixed; top:0; left:0; width:100%; height:100%;
+            background: rgba(0,0,0,0.9); backdrop-filter: blur(15px);
+            display: none; justify-content: center; align-items: center; z-index: 3000;
+        }
+        .modal-card {
+            background: #fff; color: #000; padding: 40px; border-radius: 40px;
+            width: 600px; max-width: 95%; position: relative; animation: slideUp 0.4s ease;
+        }
+        @keyframes slideUp { from { transform: translateY(50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+        .size-container { display: flex; gap: 10px; margin: 15px 0; }
+        .size-chip { padding: 10px 20px; border: 1px solid #ddd; border-radius: 12px; cursor: pointer; font-size: 0.8rem; font-weight: 600; transition: 0.3s; }
+        .size-chip.active { background: #000; color: #fff; border-color: #000; }
+
+        .qty-box { display: flex; align-items: center; gap: 15px; margin: 20px 0; }
+        .qty-btn { width: 35px; height: 35px; border-radius: 50%; border: 1px solid #ddd; background: #fff; cursor: pointer; }
+        
+        .action-btn { width: 100%; padding: 20px; background: var(--accent); color: #fff; border-radius: 50px; border: none; font-weight: 700; cursor: pointer; transition: 0.3s; }
+        .action-btn:hover { background: #000; transform: scale(1.02); }
+        .action-btn:disabled { background: #ccc; cursor: not-allowed; }
+
+        .cart-drawer {
+            position: fixed; top: 0; right: -420px; width: 400px; height: 100%;
+            background: #fff; color: #000; z-index: 2001; transition: 0.6s cubic-bezier(0.85, 0, 0.15, 1);
+            padding: 40px; display: flex; flex-direction: column;
+        }
+        .cart-drawer.active { right: 0; }
+        .cart-items { flex-grow: 1; overflow-y: auto; margin: 20px 0; }
+        .cart-item { display: flex; gap: 15px; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid #eee; }
+        .cart-item img { width: 70px; height: 70px; border-radius: 15px; object-fit: cover; }
+
+        .hero { display:flex; align-items:center; justify-content:space-between; padding:0 8%; min-height:100vh; }
+        @media(max-width: 768px) { .hero { flex-direction: column; text-align: center; padding-top: 120px;} .cart-drawer { width: 100%; } }
+
+        .pay-option { border: 1px solid #eee; padding: 12px; border-radius: 12px; cursor: pointer; display: flex; align-items: center; gap: 10px; font-size: 0.8rem; transition: 0.3s; }
+        .pay-option:hover { border-color: var(--accent); background: #fdfafd; }
+        
+        /* Subtle Badge */
+        .badge { background: #e8f5e9; color: #2e7d32; padding: 4px 10px; border-radius: 8px; font-size: 0.65rem; font-weight: 800; letter-spacing: 1px; margin-bottom: 10px; display: inline-block; }
+    </style>
+</head>
+
+<body>
+
+    <div class="live-bg"></div>
+
+    <nav>
+        <h1 onclick="location.reload()">KNITTO</h1>
+        <div class="nav-capsule">
+            <div class="nav-link" id="userBtn" onclick="openLogin()">Login</div>
+            <div class="divider"></div>
+            <div class="nav-link" onclick="toggleCart()">
+                Bag <span id="cart-count">0</span>
+            </div>
+        </div>
+    </nav>
+
+    <section class="hero" id="landing">
+        <div class="hero-text">
+            <span class="badge">SPRING COLLECTION 2026</span>
+            <h2 style="font-size: 5rem; line-height: 1;">Soft <br><i style="font-family:'Cormorant Garamond'; color:var(--accent);">Luxury.</i></h2>
+            <p style="margin: 25px 0; opacity: 0.7; font-size: 1.1rem;">Premium 3D knitwear crafted for comfort.</p>
+            <button class="nav-link" id="shopBtn" style="padding: 18px 45px; background: #fff; color: #000; border-radius: 50px; border:none; font-size: 0.9rem; font-weight: 800;">BROWSE STUDIO</button>
+        </div>
+        <div style="width: 50%;">
+            <model-viewer src="fabric/he.glb" auto-rotate camera-controls exposure="1.3" style="width: 100%; height: 500px;"></model-viewer>
+        </div>
+    </section>
+
+    <section id="shop">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <h3 style="font-size:2.5rem; font-family: 'Cormorant Garamond';">The Studio</h3>
+            <button id="closeShop" style="background:none; border:none; cursor:pointer; color: var(--accent); font-weight:800; letter-spacing: 2px;">[ CLOSE ]</button>
+        </div>
+        <div class="product-grid">
+            <div class="item-card" onclick="openDetail('Cloud Knit', 95.00, 'masha.png', 'Signature seamless knit with high-tech breathability.')">
+                <img src="masha.png">
+                <h4>Cloud Knit</h4>
+                <p style="color: var(--accent); font-weight: 800;">$95.00</p>
+            </div>
+            <div class="item-card" onclick="openDetail('Onyx Hoodie', 145.00, 'cheery.png', 'Deep charcoal blend with a relaxed structure.')">
+                <img src="cheery.png">
+                <h4>Onyx Hoodie</h4>
+                <p style="color: var(--accent); font-weight: 800;">$145.00</p>
+            </div>
+            </div>
+    </section>
+
+    <div class="modal-overlay" id="productModal">
+        <div class="modal-card">
+            <span style="position:absolute; top:20px; right:25px; cursor:pointer; font-weight: 800;" onclick="closeModal('productModal')">✕</span>
+            <div style="display: flex; gap: 30px; flex-wrap: wrap;">
+                <img id="pModalImg" src="" style="width: 220px; height: 260px; object-fit: cover; border-radius: 25px;">
+                <div style="flex: 1; min-width: 250px;">
+                    <h2 id="pModalName">Product Name</h2>
+                    <p id="pModalPrice" style="color: var(--accent); font-weight: 800; font-size: 1.5rem; margin: 10px 0;">$0.00</p>
+                    <p id="pModalDesc" style="color: #666; font-size: 0.9rem; margin-bottom: 20px;">Desc</p>
+                    
+                    <p style="font-weight: 800; font-size: 0.7rem; text-transform: uppercase;">Select Size</p>
+                    <div class="size-container">
+                        <div class="size-chip active" onclick="selectSize(this)">S</div>
+                        <div class="size-chip" onclick="selectSize(this)">M</div>
+                        <div class="size-chip" onclick="selectSize(this)">L</div>
+                    </div>
+
+                    <div class="qty-box">
+                        <button class="qty-btn" onclick="updateQty(-1)">-</button>
+                        <span id="pModalQty" style="font-weight: 800;">1</span>
+                        <button class="qty-btn" onclick="updateQty(1)">+</button>
+                    </div>
+
+                    <button class="action-btn" onclick="confirmAddToCart()">ADD TO BAG</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="loginModal">
+        <div class="modal-card" style="text-align:center; width: 400px;">
+            <h2 style="margin-bottom: 10px;">Welcome Back</h2>
+            <p style="font-size: 0.8rem; color: #777;">Enter your name to unlock the collection.</p>
+            <input type="text" id="loginName" placeholder="Full Name" style="width: 100%; padding: 15px; border-radius: 12px; border: 1px solid #ddd; margin: 20px 0; outline: none;">
+            <button class="action-btn" onclick="processLogin()">LOGIN</button>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="shippingModal">
+        <div class="modal-card" style="width: 750px;">
+            <span style="position:absolute; top:20px; right:25px; cursor:pointer; font-weight: 800;" onclick="closeModal('shippingModal')">✕</span>
+            <h2 style="margin-bottom: 20px; font-family: 'Cormorant Garamond';">Finalize Order</h2>
+            
+            <div style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 30px;">
+                <div>
+                    <p style="font-weight: 800; font-size: 0.7rem; margin-bottom: 10px; color: var(--accent);">SHIPPING DETAILS</p>
+                    <input type="text" id="shipPhone" placeholder="WhatsApp Number" style="width: 100%; padding: 12px; border-radius: 12px; border: 1px solid #ddd; margin-bottom: 10px; outline: none;">
+                    <textarea id="shipAddr" placeholder="Street Address, City, Country" rows="3" style="width: 100%; padding: 12px; border-radius: 12px; border: 1px solid #ddd; margin-bottom: 20px; outline: none;"></textarea>
+
+                    <p style="font-weight: 800; font-size: 0.7rem; margin-bottom: 10px; color: var(--accent);">PAYMENT GATEWAY</p>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px;">
+                        <label class="pay-option">
+                            <input type="radio" name="payMethod" value="JazzCash" onclick="togglePayInput(true)"> JazzCash
+                        </label>
+                        <label class="pay-option">
+                            <input type="radio" name="payMethod" value="EasyPaisa" onclick="togglePayInput(true)"> EasyPaisa
+                        </label>
+                        <label class="pay-option" style="grid-column: span 2;">
+                            <input type="radio" name="payMethod" value="COD" onclick="togglePayInput(false)" checked> Cash on Delivery (COD)
+                        </label>
+                    </div>
+
+                    <div id="onlinePayFields" style="display:none; animation: slideUp 0.3s ease;">
+                        <input type="text" id="accNumber" placeholder="Account Wallet Number" style="width: 100%; padding: 12px; border-radius: 10px; border: 1px solid var(--accent); outline: none;">
+                    </div>
+                </div>
+
+                <div style="background: #f9f9f9; padding: 25px; border-radius: 30px;">
+                    <p style="font-weight: 800; margin-bottom: 10px;">Cart Summary</p>
+                    <div id="orderSummaryList" style="font-size: 0.8rem; line-height: 2; max-height: 120px; overflow-y: auto;"></div>
+                    <div style="border-top: 1px solid #ddd; margin-top: 15px; padding-top: 15px; font-weight: 800; display: flex; justify-content: space-between;">
+                        <span>Final Total:</span>
+                        <span id="finalPrice" style="color: var(--accent); font-size: 1.2rem;">$0.00</span>
+                    </div>
+                    <button class="action-btn" id="finishBtn" style="margin-top: 20px;" onclick="finishOrder()">PLACE ORDER</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="cart-drawer" id="cartDrawer">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <h3>My Bag</h3>
+            <span onclick="toggleCart()" style="cursor:pointer; font-weight:800;">✕</span>
+        </div>
+        <div class="cart-items" id="cartItemsList"></div>
+        <div style="border-top: 2px solid #000; padding-top: 20px;">
+            <div style="display:flex; justify-content:space-between; font-weight:800; margin-bottom:20px;">
+                <span>Subtotal</span><span id="cartTotal">$0.00</span>
+            </div>
+            <button class="action-btn" onclick="initiateCheckout()">PROCEED</button>
+        </div>
+    </div>
+
+    <script>
+        // CONFIG: Apna WhatsApp number yahan likhein (92 Pakistan code ke sath)
+        const MY_WHATSAPP = "923123456789"; 
+
+        let cart = [];
+        let isLoggedIn = false;
+        let currentUser = "";
+        let currentTempProduct = null;
+        let selectedSize = "S";
+        let currentQty = 1;
+
+        // Navigation
+        document.getElementById('shopBtn').onclick = () => { document.getElementById('landing').style.display = 'none'; document.getElementById('shop').style.display = 'block'; }
+        document.getElementById('closeShop').onclick = () => { document.getElementById('shop').style.display = 'none'; document.getElementById('landing').style.display = 'flex'; }
+        function toggleCart() { document.getElementById('cartDrawer').classList.toggle('active'); }
+        function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+        function openLogin() { if(!isLoggedIn) document.getElementById('loginModal').style.display = 'flex'; }
+
+        function selectSize(btn) {
+            document.querySelectorAll('.size-chip').forEach(c => c.classList.remove('active'));
+            btn.classList.add('active');
+            selectedSize = btn.innerText;
+        }
+
+        function openDetail(name, price, img, desc) {
+            currentTempProduct = { name, price, img };
+            currentQty = 1;
+            document.getElementById('pModalName').innerText = name;
+            document.getElementById('pModalPrice').innerText = `$${price.toFixed(2)}`;
+            document.getElementById('pModalImg').src = img;
+            document.getElementById('pModalDesc').innerText = desc;
+            document.getElementById('pModalQty').innerText = 1;
+            document.getElementById('productModal').style.display = 'flex';
+        }
+
+        function updateQty(val) {
+            currentQty += val;
+            if(currentQty < 1) currentQty = 1;
+            document.getElementById('pModalQty').innerText = currentQty;
+        }
+
+        function confirmAddToCart() {
+            cart.push({ ...currentTempProduct, qty: currentQty, size: selectedSize });
+            updateUI();
+            closeModal('productModal');
+            toggleCart();
+        }
+
+        function updateUI() {
+            const list = document.getElementById('cartItemsList');
+            const summary = document.getElementById('orderSummaryList');
+            const count = document.getElementById('cart-count');
+            const totalDisp = document.getElementById('cartTotal');
+            list.innerHTML = ''; summary.innerHTML = '';
+            let total = 0; let totalItems = 0;
+
+            cart.forEach((item, i) => {
+                const itemTotal = item.price * item.qty;
+                total += itemTotal; totalItems += item.qty;
+                list.innerHTML += `<div class="cart-item"><img src="${item.img}"><div><h4>${item.name}</h4><p>$${item.price} | ${item.size} | Qty: ${item.qty}</p><span onclick="removeItem(${i})" style="color:red; cursor:pointer; font-size:0.7rem; font-weight:800">REMOVE</span></div></div>`;
+                summary.innerHTML += `<div>${item.name} (${item.size}) x${item.qty} - $${itemTotal.toFixed(2)}</div>`;
+            });
+
+            count.innerText = totalItems;
+            totalDisp.innerText = `$${total.toFixed(2)}`;
+            document.getElementById('finalPrice').innerText = `$${total.toFixed(2)}`;
+        }
+
+        function removeItem(index) { cart.splice(index, 1); updateUI(); }
+
+        function processLogin() {
+            const name = document.getElementById('loginName').value;
+            if(!name) return alert("Please enter your name.");
+            isLoggedIn = true; currentUser = name;
+            document.getElementById('userBtn').innerText = name.split(' ')[0];
+            closeModal('loginModal');
+        }
+
+        function initiateCheckout() {
+            if(cart.length === 0) return alert("Your bag is empty.");
+            if(!isLoggedIn) { toggleCart(); openLogin(); }
+            else { toggleCart(); document.getElementById('shippingModal').style.display = 'flex'; }
+        }
+
+        function togglePayInput(show) {
+            document.getElementById('onlinePayFields').style.display = show ? 'block' : 'none';
+        }
+
+        // --- THE FINISH LOGIC (PRO LEVEL) ---
+        function finishOrder() {
+            const phone = document.getElementById('shipPhone').value;
+            const addr = document.getElementById('shipAddr').value;
+            const method = document.querySelector('input[name="payMethod"]:checked').value;
+            const accNum = document.getElementById('accNumber').value;
+            const orderID = "KN-" + Math.floor(1000 + Math.random() * 9000);
+
+            if(!phone || !addr) return alert("Please provide contact and address details.");
+            if((method !== "COD") && !accNum) return alert(`Please enter your ${method} wallet number.`);
+
+            const btn = document.getElementById('finishBtn');
+            btn.innerText = "AUTHENTICATING...";
+            btn.disabled = true;
+
+            setTimeout(() => {
+                // Generate WhatsApp Message
+                let itemsList = cart.map(i => `• ${i.name} (${i.size}) x${i.qty} - $${(i.price * i.qty).toFixed(2)}`).join('%0A');
+                let total = document.getElementById('finalPrice').innerText;
+                
+                let waMsg = `*NEW ORDER: ${orderID}*%0A%0A` +
+                            `*Customer:* ${currentUser}%0A` +
+                            `*Phone:* ${phone}%0A` +
+                            `*Address:* ${addr}%0A%0A` +
+                            `*Items:*%0A${itemsList}%0A%0A` +
+                            `*Total:* ${total}%0A` +
+                            `*Payment:* ${method} ${accNum ? '('+accNum+')' : ''}`;
+
+                // Send to WhatsApp
+                window.open(`https://wa.me/${MY_WHATSAPP}?text=${waMsg}`, '_blank');
+
+                alert(`✨ Order Placed Successfully! ✨\nOrder ID: ${orderID}\n\nA confirmation has been sent to your WhatsApp.`);
+                
+                cart = []; 
+                updateUI(); 
+                closeModal('shippingModal');
+                btn.innerText = "PLACE ORDER";
+                btn.disabled = false;
+                document.getElementById('shop').style.display = 'none';
+                document.getElementById('landing').style.display = 'flex';
+                window.scrollTo(0,0);
+            }, 2000);
+        }
+    </script>
+</body>
+</html>
